@@ -70,8 +70,8 @@ def create_multisig_address(pubfile1,pubfile2):
 #can be used by a counterparty to check whether money has been paid in
 def check_balance_at_multisig(pubfile1,pubfile2):
     msigaddr, mscript = create_multisig_address(pubfile1,pubfile2)
-    confirmed, unconfirmed = get_balance_lspnr(msigaddr)
-    return "Balance at",msigaddr,"is: confirmed:",confirmed,"unconfirmed:", unconfirmed
+    get_balance_lspnr(msigaddr)
+    
 
 #called by both counterparties (and can be escrow) to generate a signature to apply
 def create_sig_for_redemption(txid,pubfile1,pubfile2,amt,txfee,addr_to_be_paid,privfile=None):
@@ -97,15 +97,12 @@ def create_sig_for_redemption(txid,pubfile1,pubfile2,amt,txfee,addr_to_be_paid,p
 
 #any party in possession of two signatures can call this to broadcast
 #the tx to the network
-def sign_and_broadcast_to_network(txid,sigfile1,sigfile2,pubfile1,pubfile2,amt,txfee,addr_to_be_paid):
+def sign_and_broadcast_to_network(sigfile1,sigfile2,pubfile1,pubfile2,amt,txfee,addr_to_be_paid):
     sigs=[]
     for f in [sigfile1,sigfile2]:
         with open(f,'r') as fi:
             sigs.append(fi.readline().strip())
         
-    with open(os.path.join(msd,txid+'.private'),'r') as f:
-        for i in range(1,4): f.readline()
-        priv = f.readline()
     msigaddr, mscript = create_multisig_address(pubfile1,pubfile2)
     amt = int(amt*1e8)
     txfee = int(txfee*1e8)
@@ -270,53 +267,58 @@ def get_balance_lspnr(addr_to_test):
     return conf_bal,unconf_bal
 
 if __name__ == "__main__":
+    if len(sys.argv)<2:
+        print "Before you start, make sure to write an escrow's public key as a string in escrow_pubkey at the top of this file"
+        print "If you have no escrow pubkey, you can pretend to be the escrow yourself and generate a pubkey with the command create, and then store it in this file"
+        print "In real usage, the escrow is a third party who will store his own .private and give you a .share file with this pubkey."
+        print "Also, the full path of the multisig storage directory should be set in the variable msd"
+        print "===================================================================="
+        print "To carry out the 2 of 3 escrow process, provide arguments as follows:"
+        print "===================================================================="
+        print "python multisig.py create txid (creates an address used only for signing)"
+        print "python multisig.py share txid (creates a file you can share with your counterparty)"
+        print "python multisig.py multi_create sharefile1 sharefile2 (generates the multisig address to be used; will be the same for both counterparties)"
+        print "python multisig.py multi_check sharefile1 sharefile2 (checks the balance of the new multisig address)"
+        print "python multisig.py sign txid sharefile1 sharefile2 amount_incl_txfee txfee addr_to_pay [.private file] (creates a file with suffix .sig containing this party\'s signature to the transaction"
+        print "python multisig.py redeem sigfile1 sigfile2 sharefile1 sharefile2 amount_incl_txfee txfee addr_to_pay"
+        exit()
+        
+    if sys.argv[1]=='create': #second argument is transaction id
+        addr, pub, priv = create_tmp_address_and_store_keypair(sys.argv[2])
+        print "data stored in: ",os.path.join(msd,sys.argv[2]+'.private')
     
-    #Test 1: make and store a local "ephemeral" address and keypair
-    #for signing a multisig
-    '''addr, pub, priv = create_tmp_address_and_store_keypair('123')
-    print addr, pub, priv
-    '''
     
-    #Test 2: make share-able file to give to counterparty to set up
-    #the multisig
-    '''
-    create_file_for_sending_to_counterparty_to_prepare_multisig('123')
-    '''
+    elif sys.argv[1]=='share': #second argument is transaction id
+        create_file_for_sending_to_counterparty_to_prepare_multisig(sys.argv[2])
+        print "shareable file stored in:",os.path.join(msd,sys.argv[2]+'.share')
     
-    #Test 3: generate the multisig; after this, pay into the address (seller)
-    '''print create_multisig_address('/root/pybitcointools/multisig_store/123.share',\
-                                  '/root/pybitcointools/multisig_store/my123.share')
-    '''
+    elif sys.argv[1]=='multi_create': #2nd and 3rd arguments are .share files
+        print "Multisig address:",create_multisig_address(os.path.join(msd,sys.argv[2]),os.path.join(sys.argv[3]))
+        print "If you're the bitcoin SELLER, please pay the appropriate amount into the address now."
+        print "If you're the bitcoin BUYER, check whether the appropriate amount has been paid into this address."
+
     
-    #Test 4: check whether it's been paid into the multisig address
-    '''
-    print check_balance_at_multisig('/root/pybitcointools/multisig_store/123.share',\
-                                  '/root/pybitcointools/multisig_store/my123.share')
-    '''
+    elif sys.argv[1]=='multi_check': #second and third arguments are .share files
+        check_balance_at_multisig(os.path.join(msd,sys.argv[2]),os.path.join(msd,sys.argv[3]))
     
-    #Test 5: sign the transaction and store it in a file to send on 
-    '''
-    create_sig_for_redemption('123','/root/pybitcointools/multisig_store/123.share',\
-                                  '/root/pybitcointools/multisig_store/my123.share',\
-                                    .001,0.0002,'1iHCdVZrW8yLKunsg7y2kssN1dCqM4m52')
-    '''
+    elif sys.argv[1]=='sign': #arguments: 2: txid 3,4: share files 5: amount to pay INCLUDING tx fee 6: tx fee 7:address to pay out to
+        create_sig_for_redemption(sys.argv[2],os.path.join(msd,sys.argv[3]),\
+os.path.join(msd,sys.argv[4]),float(sys.argv[5]),float(sys.argv[6]),sys.argv[7])
+        print "Signature file was created in:",os.path.join(msd,sys.argv[2]+'.sig')
     
-    #Test 6: other party also signs
-    '''
-    create_sig_for_redemption('123','/root/pybitcointools/multisig_store/123.share',\
-                                  '/root/pybitcointools/multisig_store/my123.share',\
-                                    .001,0.0002,'1iHCdVZrW8yLKunsg7y2kssN1dCqM4m52',\
-                                    '/root/pybitcointools/multisig_store/my123.private')
-    '''
     
-    #Test 7: broadcast the transaction
-    '''
-    print sign_and_broadcast_to_network('123',\
-        '/root/pybitcointools/multisig_store/my123.sig',\
-        '/root/pybitcointools/multisig_store/123.sig',\
-        '/root/pybitcointools/multisig_store/123.share',\
-        '/root/pybitcointools/multisig_store/my123.share',\
-        0.001,0.0002,'1iHCdVZrW8yLKunsg7y2kssN1dCqM4m52')
-    '''
+    elif sys.argv[1]=='redeem':
+        #args: redeem  sigfile1 sigfile2 pubfile1 pubfile2 amt txfee address_to_pay
+        for i in range(2,6):
+            sys.argv[i] = os.path.join(msd,sys.argv[i])
+        sys.argv[6] = float(sys.argv[6])
+        sys.argv[7]=float(sys.argv[7])
+        print sys.argv[2:9]
+        print sign_and_broadcast_to_network(*sys.argv[2:9])
+    
+    else:
+        print "incorrect first argument to script"
+        
+    
     
     
