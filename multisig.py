@@ -63,6 +63,10 @@ def create_multisig_address(pubfile1,pubfile2):
             fi.readline()
             fi.readline()
             pubs.append(fi.readline().strip())
+    
+    #necessary for ensuring unique result for address
+    pubs.sort()
+    
     mscript = mk_multisig_script(pubs,2,3)
     msigaddr = scriptaddr(mscript.decode('hex'))
     return (msigaddr,mscript)
@@ -267,6 +271,9 @@ def get_balance_lspnr(addr_to_test):
     return conf_bal,unconf_bal
 
 if __name__ == "__main__":
+    
+    if not os.path.isdir(msd): os.mkdir(msd)
+    
     if len(sys.argv)<2:
         print "Before you start, make sure to write an escrow's public key as a string in escrow_pubkey at the top of this file"
         print "If you have no escrow pubkey, you can pretend to be the escrow yourself and generate a pubkey with the command create, and then store it in this file"
