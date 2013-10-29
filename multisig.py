@@ -3,10 +3,10 @@ from pybitcointools import *
 import txpusher
 
 #this should be defined in a config - MultsigStorageDirectory
-msd = '/root/pybitcointools/multisig_store'
+msd = '/root/local/multisig_lspnr/multisig_store'
 
 #This should be set in set_escrow_pubkey before doing anything
-escrow_pubkey='04796ea7f5ca5afa6f3ba907a51484b8d5959a69f38551444538e72280f8dcb1760c0b69ed714fb835ca4bc89fe04132d175dace5004d679c6a85b69078b798495'
+escrow_pubkey='045e1a2a55ccf714e72b9ca51b89979575aad326ba21e15702bbf4e1000279dc72208abd3477921064323b0254c9ead6367ebce17da3ad6037f7a823d65e957b20'
 
 
 def set_escrow_pubkey(pubkey):
@@ -58,7 +58,7 @@ def create_multisig_address(pubfile1,pubfile2):
     global escrow_pubkey
     check_escrow_present()
     pubs = [escrow_pubkey]
-    for f in [pubfile1,pubfile2]:
+    for f in [os.path.join(msd,pubfile1),os.path.join(msd,pubfile2)]:
         with open(f,'r') as fi:
             fi.readline()
             fi.readline()
@@ -83,6 +83,9 @@ def create_sig_for_redemption(txid,pubfile1,pubfile2,amt,txfee,addr_to_be_paid,p
     amt = int(amt*1e8)
     txfee = int(txfee*1e8)
     outs = [{'value':amt-txfee,'address':addr_to_be_paid}]
+    if len(history(msigaddr))<1:
+        print "sorry, the multisig address:",msigaddr,"doesn't seem to have any transactions yet. Wait until \'python multisig.py multi_check\' shows CONFIRMED balance."
+        exit(0)
     ins = history(msigaddr)[0]
     tmptx = mktx(history(msigaddr),outs)
     if not privfile:
