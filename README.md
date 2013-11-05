@@ -28,15 +28,13 @@ with no arguments. This should provide the following instructions for command li
 
 To carry out the 2 of 3 escrow process, provide arguments as follows:
 
-    python multisig.py create txid (creates an address used only for signing)
+    python multisig.py create unique_id (creates an address used only for signing, a .private file and a .share file)
 
-    python multisig.py share txid (creates a file you can share with your counterparty)
+    python multisig.py multi_create unique_id_1 unique_id_2 (generates the multisig address to be used; will be the same for both counterparties)
 
-    python multisig.py multi_create sharefile1 sharefile2 (generates the multisig address to be used; will be the same for both counterparties)
+    python multisig.py multi_check unique_id_1 unique_id_2 (checks the balance of the new multisig address)
 
-    python multisig.py multi_check sharefile1 sharefile2 (checks the balance of the new multisig address)
+    python multisig.py sign signing_id unique_id_1 unique_id_2 amount_incl_txfee txfee addr_to_pay (creates a file with suffix .sig containing [signing_id]'s signature to the transaction
 
-    python multisig.py sign txid sharefile1 sharefile2 amount_incl_txfee txfee addr_to_pay [.private file] (creates a file with suffix .sig containing this party's signature to the transaction
-
-    python multisig.py redeem txid sigfile1 sigfile2 sharefile1 sharefile2 amount_incl_txfee txfee addr_to_pay
+    python multisig.py redeem sigid1 sigid2 unique_id_1 unique_id_2 amount_incl_txfee txfee addr_to_pay
 
