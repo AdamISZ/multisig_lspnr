@@ -3,7 +3,7 @@ from pybitcointools import *
 import electrumaccessor as ea
 
 #this should be defined in a config - MultsigStorageDirectory
-msd = '/root/local/multisig_lspnr/multisig_store'
+msd = 'C:/lsnpr/paysty-eu/ssllog-master/multisig_store'
 
 #This should be set in set_escrow_pubkey before doing anything
 escrow_pubkey='045e1a2a55ccf714e72b9ca51b89979575aad326ba21e15702bbf4e1000279dc72208abd3477921064323b0254c9ead6367ebce17da3ad6037f7a823d65e957b20'
@@ -33,18 +33,25 @@ def create_tmp_address_and_store_keypair(uniqueid):
         f.readline()
         f.readline()
         pub = f.readline() #TODO : error checking is critical here
-    with open(os.path.join(msd,uniqueid+'.share'),'wb') as f:
-        f.write("THIS FILE IS SAFE TO SHARE WITH OTHERS. SEND IT TO YOUR COUNTERPARTY TO ALLOW THEM TO DO ESCROW WITH YOU.\r\n")
-        f.write(escrow_pubkey+'\r\n')
-        f.write(pub+'\r\n')
-        
+    store_share(pub,uniqueid)
     #access to data at runtime for convenience
     return (addr,pub,priv)
 
+def store_share(pubkey,uniqueid):
+    global escrow_pubkey
+    check_escrow_present()
+    with open(os.path.join(msd,uniqueid+'.share'),'wb') as f:
+        f.write("THIS FILE IS SAFE TO SHARE WITH OTHERS. SEND IT TO YOUR COUNTERPARTY TO ALLOW THEM TO DO ESCROW WITH YOU.\r\n")
+        f.write(escrow_pubkey+'\r\n')
+        f.write(pubkey+'\r\n')
+    
 #when user has received pubkey from counterparty, can set up the multisig address
 #payment INTO the multisig address, by seller, happens outside the application
+#uniqueid1 is YOU, 2 is counterparty, in case this is called from web app
 def create_multisig_address(uniqueid1,uniqueid2):
     pubs = get_ordered_pubkeys(uniqueid1, uniqueid2)
+    if not pubs:
+        return ('','')
     mscript = mk_multisig_script(pubs,2,3)
     msigaddr = scriptaddr(mscript.decode('hex'))
     return (msigaddr,mscript)
@@ -53,21 +60,26 @@ def get_ordered_pubkeys(uniqueid1,uniqueid2):
     global escrow_pubkey
     check_escrow_present()
     pubs = [escrow_pubkey]
-    for f in [os.path.join(msd,uniqueid1+'.share'),os.path.join(msd,uniqueid2+'.share')]:
-        with open(f,'r') as fi:
-            fi.readline()
-            fi.readline()
-            pubs.append(fi.readline().strip())
+    try:
+        for f in [os.path.join(msd,uniqueid1+'.share'),os.path.join(msd,uniqueid2+'.share')]:
+            with open(f,'r') as fi:
+                fi.readline()
+                fi.readline()
+                pubs.append(fi.readline().strip())
+    except:
+        return None
     #necessary for ensuring unique result for address
     pubs.sort()
     return pubs
 
 #can be used by a counterparty to check whether money has been paid in
-def check_balance_at_multisig(uniqueid1,uniqueid2):
-    msigaddr, mscript = create_multisig_address(uniqueid1,uniqueid2)
+def check_balance_at_multisig(uniqueid1,uniqueid2,addr=''):
+    if not addr:
+        msigaddr, mscript = create_multisig_address(uniqueid1,uniqueid2)
+    else:
+        msigaddr = addr
     return get_balance_lspnr(msigaddr)
     
-
 #called by both counterparties (and can be escrow) to generate a signature to apply
 #will fail and return None if the multisig address has not been funded
 def create_sig_for_redemption(uniqueid,uniqueid1,uniqueid2,amt,txfee,addr_to_be_paid):

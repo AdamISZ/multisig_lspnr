@@ -45,7 +45,7 @@ def connect_electrum():
             print "failed to connect to:", host, str(port)
             continue #try the next server
 
-        s.settimeout(5)
+        s.settimeout(20)
         is_connected = True
         print "connected to", host, str(port)
         return True
