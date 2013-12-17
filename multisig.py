@@ -3,7 +3,7 @@ from pybitcointools import *
 import electrumaccessor as ea
 
 #this should be defined in a config - MultsigStorageDirectory
-msd = 'C:/lsnpr/paysty-eu/ssllog-master/multisig_store'
+msd = '/some/directory/for/multisig/files'
 
 #This should be set in set_escrow_pubkey before doing anything
 escrow_pubkey='045e1a2a55ccf714e72b9ca51b89979575aad326ba21e15702bbf4e1000279dc72208abd3477921064323b0254c9ead6367ebce17da3ad6037f7a823d65e957b20'
@@ -27,12 +27,6 @@ def create_tmp_address_and_store_keypair(uniqueid):
         f.write(pub+'\r\n')
         f.write(priv+'\r\n')
     
-    global escrow_pubkey
-    check_escrow_present()
-    with open(os.path.join(msd,uniqueid+'.private'),'r') as f:
-        f.readline()
-        f.readline()
-        pub = f.readline() #TODO : error checking is critical here
     store_share(pub,uniqueid)
     #access to data at runtime for convenience
     return (addr,pub,priv)
